@@ -386,6 +386,8 @@ NprintMeasures<-function(results){
     TN = formatter("span",style = x ~ style(color = "black"),~sprintf("%.0f",TN)),
     FP = formatter("span",style = x ~ style(color = "black"),~sprintf("%.0f",FP))))
   print(t)
+    
+   
 }
 
 # ************************************************
