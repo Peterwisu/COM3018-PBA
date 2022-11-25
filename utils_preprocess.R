@@ -1,13 +1,15 @@
 
-#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-######
+#####################################################################
+#
+# Preprocess_satscale()
 # 
 # Rescale a satisfaction scale column in range of 0.0-1.0
+#
 # Input:  columns contain a rating of satisfaction of passenger 
+#
 # Return: Normalize value in a range of 0-1
 #
-######
+#####################################################################
 Preprocess_satscale<-function(input){
     
     
@@ -19,7 +21,7 @@ Preprocess_satscale<-function(input){
     
     return(rescale)
 }
-######
+###########################################################################
 #
 # Apply linear normalization for rescale a value in a fields into range 0-1
 # Inputs : columns containig ordinal values
@@ -148,6 +150,9 @@ Process_distance<-function(dataset){
     return(out)
     
     }
+
+
+
 ####
 #
 # Function from lab 3
@@ -185,6 +190,13 @@ Preprocess_categorical<-function(dataset){
 } # endof categorical_encoding()
 
 
+
+
+
+
+
+######################################## Function from a lab without modificaiton ############################################
+
 # Function from lab
 myModelFormula<-function(dataset,fieldNameOutput,selectField){
      
@@ -197,12 +209,6 @@ myModelFormula<-function(dataset,fieldNameOutput,selectField){
   return(formular)
 
 } 
-
-
-
-
-######################################## Function from a lab without modificaiton ############################################
-
 
 # Pre-Processing a Dataset functions
 # To manually set a field type

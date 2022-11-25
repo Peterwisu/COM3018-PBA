@@ -1,4 +1,344 @@
 
+#####################################
+#
+# TreeCoeff_plot()
+#
+# Plot importance fields of Decsion Tree model on barchart
+#
+# Inputs : DT - Decsion Tree Model
+###################################
+TreeCoeff_plot<-function(DT){
+    
+    library(RColorBrewer)
+    coul <- brewer.pal(5, "Set2")
+    importance<-C50::C5imp(DT, metric = "usage")
+    names(importance)<-"Strength"
+
+    importance<-importance[order(importance$Strength,decreasing=FALSE),,drop=FALSE]
+
+    print(formattable::formattable(importance))
+    # Plot the importance fields
+
+    barplot(t(importance),las=2,border = 0, cex.names =0.7, main="Decision Tree", col=coul ,horiz=T)
+}
+
+#########################################################
+# ForestCoeff_plot()
+#
+# Plot importance fields of a Random Forest Classifier model 
+#
+# Inputs : model -  Random Forest Model
+#########################################################
+ForestCoeff_plot<-function(model){
+    
+
+    library(RColorBrewer)
+    coul <- brewer.pal(5, "Set2")
+
+    importance<-randomForest::importance(model,scale=TRUE,type=1)
+    importance<-importance[order(importance,decreasing=FALSE),,drop=FALSE]
+
+    colnames(importance)<-"Strength"
+
+    barplot(t(importance),las=2, border = 0,
+            cex.names =0.7,
+            main='Random Forest',
+           horiz=T,
+           col=coul)
+    
+}
+
+
+
+#######################################################################
+# LogisticCoeff_plot()
+#
+# Plot the weight or value of coefficient in logisitic regression model
+#
+# Inputs :  model - Logsitic Regression model 
+#######################################################################
+LogisticCoeff_plot<-function(model){
+    
+# Plotting sorted model coefficient in barplot 
+par(las=2) # make label text perpendicular to axis
+par(mar=c(10,2,2,2)) # increase y-axis margin.
+options(repr.plot.width = 10, repr.plot.height = 10)
+coeff<-model$coeff[-which(names(model$coeff)%in%c('(Intercept)'))]
+barplot(unname(sort(coeff)), main="Distribution of Logistic Regression Coefficient", names.arg=names(sort(coeff)), cex.names=.9, col=rgb(0.2,0.4,0.6,0.6) )
+
+}
+
+
+LogisticCurve_plot<-function(model, label){
+   # probability=
+    
+    label = ifelse(label==1,"satisfied(1)","neutral or dissatisfied(0)")
+    print("Logistic Plot")
+    df<-data.frame(probability = model$fitted.values,
+                   satisfy = label)
+ 
+    df <- df[order(df$probability, decreasing=FALSE),]
+                                           
+    
+    df$rank <- 1:nrow(df)
+                                           
+    ggplot(data=df, aes(x=rank, y=probability)) +
+      geom_point(aes(color=satisfy), alpha=1, shape=4, stroke=2) +
+      xlab("Index of dataset") +
+      ylab("Predicted probability of passenger satisfaction")+
+      labs( title = "\n Logistic Regression Curve \n") +
+        theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(size=12),
+        axis.title.x = element_text(face="bold", colour="black", size = 14),
+        axis.title.y = element_text(face="bold", colour="black", size = 14),
+        title = element_text(face="bold", color="black", size= 15),
+        legend.title = element_text(face="bold", size = 12))
+    
+    
+}
+
+##################################################################
+#
+# ConfusionMatrix_plot()
+#
+# Plot a confusion matrix containing a values of TP, TN, FP and FN of a model
+#
+# inputs : gt - ground truth
+#          pred_labels - predicted labels
+#
+###################################################################
+ConfusionMatrix_plot<-function(gt,pred_labels){
+    
+    cm<-table(gt,pred_labels)
+
+    c_matplot<-confusionMatrix(factor(gt,levels=1:0),factor(pred_labels,levels=1:0,),
+                          dnn= c('Prediction','Reference'))
+    plt <- data.frame(c_matplot$table)
+        plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
+
+    print(ggplot(plt, aes(Prediction,Reference, fill= Freq)) +
+            geom_tile() + geom_text(aes(label=Freq)) +
+            scale_fill_gradient(low="white", high="#009194") +
+            labs(x = "Reference",y = "Prediction",  title = "\n Confusiuon Matrix\n") +
+            scale_x_discrete(labels=c("neutral or dissatisfied(0)","satisfied(1)")) +
+            scale_y_discrete(labels=c("satisfied(1)","neutral or dissatisfied(0)"))+
+           theme(plot.title = element_text(hjust = 0.5), 
+        axis.text = element_text(size=12),
+        axis.title.x = element_text(face="bold", colour="black", size = 14),
+        axis.title.y = element_text(face="bold", colour="black", size = 14),
+        title = element_text(face="bold", color="black", size= 15),
+        legend.title = element_text(face="bold", size = 12))
+      )
+    }
+
+
+####################################################
+# F1_score()
+#
+#Calculate a F1 score 
+#
+#inputs : precsion - precison values of a model
+#          recll    -  recall value of a model
+#
+#return : F1 score -  F1 score of a model
+#
+####################################################
+F1_score<-function(precision,recall){
+    
+        score<-2*((precision*recall)/(precision+recall))
+    
+        return(score)
+    }
+
+
+###################################################
+# BCE_loss()
+#
+# Calculate Binary Cross Entropy loss 
+#
+# input : y - grouth truth labels
+#         y_hat - predicted probabilites
+#
+# return : loss -  loss calculated from BCE loss
+##################################################
+BCE_loss<-function(y,y_hat){
+    
+
+    term1<- (y*log(y_hat+1e-7)) # =1e-7 is to prevent the value in side a log function becoming 0
+    term2<- (1-y)*log(1-y_hat+1e-7)
+    
+    loss<- -1* mean(term1+term2)
+    
+    return(loss)
+}
+
+
+
+
+
+##########################################  From Lab
+
+
+# ************************************************
+# allocateFoldID() :
+#
+# Append a column called "foldID" that indicates the fold number
+#
+# INPUT   :   data frame         - dataset        - dataset
+#
+# OUTPUT  :   data frame         - dataset        - dataset with foldID added
+#
+# ************************************************
+allocateFoldID<-function(dataset){
+  recordsPerFold<-ceiling(nrow(dataset)/KFOLDS)
+
+  foldIds<-rep(seq(1:KFOLDS),recordsPerFold)
+
+  foldIds<-foldIds[1:nrow(dataset)]
+
+  dataset$foldId<-foldIds
+
+  return(dataset)
+} #endof allocateFoldID()
+
+
+# ************************************************
+# stratifiedDataset() :
+#
+# Split dataset by the class (assume 2-class)
+# Calculate the number of records that will appear in each fold
+# Give each of these blocks a unique foldID
+# combine the datasets & randomise
+# The dataset now has a foldID from which we can select the data
+# for the experiments
+#
+# INPUT   :   data frame         - dataset        - dataset
+#
+# OUTPUT  :   data frame         - dataset        - dataset with foldID added
+#
+# ************************************************
+stratifiedDataset<-function(originalDataset){
+
+  positionClassOutput=which(names(originalDataset)==OUTPUT_FIELD)
+
+  # Get the unique class values
+  classes<-unique(originalDataset[,positionClassOutput])
+
+  # Split dataset into the two classes (so as to keep the class balance the same in the datasets)
+  indexClass1<-which(originalDataset[,positionClassOutput]==classes[1])
+  split1<-originalDataset[indexClass1,]
+  split2<-originalDataset[-indexClass1,]
+
+  # Append a column that indicates the fold number for each class
+  split1<-allocateFoldID(split1)
+  split2<-allocateFoldID(split2)
+
+  # Combine the two datasets
+
+  newDataset<-rbind(split1,split2)
+
+  #Randomise the classes
+  newDataset<-newDataset[order(runif(nrow(newDataset))),]
+
+  return(newDataset)
+}
+
+
+# ************************************************
+# stratifiedSplit() :
+#
+# Generate the TRAIN and TEST dataset based on the current fold
+#
+# INPUT   :   data frame         - dataset
+#
+# OUTPUT  :   list               - train & test datasets
+# ************************************************
+
+stratifiedSplit<-function(newDataset,fold){
+
+  test<-subset(newDataset, subset= foldId==fold, select=-foldId)
+  train<-subset(newDataset, subset= foldId!=fold,select=-foldId)
+
+  return(list(
+    train=train,
+    test=test))
+}
+
+
+
+# ************************************************
+# runExperiment() :
+#
+#
+# INPUT   :   data frame         - dataset        - dataset
+#             object function    - FUN            - name of function
+#             ...                - optional        - parameters are passed on
+#
+# OUTPUT  :   data frame         - dataset        - dataset with foldID added
+#
+# ************************************************
+runExperiment<-function(dataset,FUN, ...){
+
+  allResults<-data.frame()
+
+  for (k in 1:KFOLDS){
+
+    
+
+    splitData<-stratifiedSplit(newDataset=dataset,fold=k)
+    print(paste("FOLD : ,",k))
+    out<-FUN(training_data=splitData$train,
+                  testing_data=splitData$test,
+             plot=FALSE,
+                  ...)
+    measures<-out$result
+    measures <-measures[-which(names(measures) %in%c("pred_labels","gt","proba"))]
+
+
+    
+
+    allResults<-rbind(allResults,data.frame(measures))
+  } #endof for()
+
+  # Return the means from all the experiments back as a list
+  # 260221NRT round metrics to 2 decimal places
+  getMeans<-round(colMeans(allResults),digits=2)
+
+  getMeans[1:4]<-as.integer(getMeans[1:4])  # TP, FN, TN, FP are rounded to ints
+
+
+  #290520NRT return the above with the rounded values
+  return(list("means" = as.list(getMeans), "allresults"= allResults))
+} #endof runExperiment()
+
+
+# ************************************************
+# NConvertClass() :
+#
+# In original dataset, $Status is the classification label
+# We need to convert this to give the minority class a value of 0
+# this just makes it easiert to define the confusioon matrix!
+# for the UCI-G this is a class of {0,1} being {bad, good}
+#
+# INPUT   :
+#             Data Frame        - dataset
+#
+# OUTPUT  :
+#             Data Frame        - dataset
+#
+# ************************************************
+NConvertClass<-function(dataset,OUTPUT_FIELD){
+  positionClassOutput<-which(names(dataset)==OUTPUT_FIELD)
+  classes<-sort(table(dataset[,positionClassOutput])) #smallest class will be first
+  minority<-names(classes[1])
+  indexToStatus2<-which(dataset[positionClassOutput]==minority)
+  dataset[positionClassOutput][indexToStatus2,]<-0
+  dataset[positionClassOutput][-indexToStatus2,]<-1
+  return(dataset)
+}
+
+
+
 # ************************************************
 # Nauroc() :
 #
@@ -187,8 +527,22 @@ NdetermineThreshold<-function(test_predicted,
 
 
 
-
+######################################################################################
 # modified function from lab
+#
+# eval_model()
+#
+# evaluate the performance of a model by using a certain threshold
+#
+# inputs : proba - predicted probabilites
+#
+#          gt_label - grounf truth labels
+#
+#          threshold - The threshold value use from converting a probabilites to labels
+#
+# returns:  list - list containing an evalution metrics and predicted outputs
+##########################################################################################
+
 eval_model<-function(proba, gt_label,threshold){
     
         
@@ -243,390 +597,7 @@ eval_model<-function(proba, gt_label,threshold){
     return(output)
 }
 
-TreeCoeff_plot<-function(DT){
-library(RColorBrewer)
-coul <- brewer.pal(5, "Set2")
-importance<-C50::C5imp(DT, metric = "usage")
-names(importance)<-"Strength"
 
-importance<-importance[order(importance$Strength,decreasing=FALSE),,drop=FALSE]
 
-print(formattable::formattable(importance))
-# Plot the importance fields
 
-barplot(t(importance),las=2,border = 0, cex.names =0.7, main="Decision Tree", col=coul ,horiz=T)
-}
 
-
-ForestCoeff_plot<-function(model){
-    
-
-    library(RColorBrewer)
-    coul <- brewer.pal(5, "Set2")
-
-    importance<-randomForest::importance(model,scale=TRUE,type=1)
-    importance<-importance[order(importance,decreasing=FALSE),,drop=FALSE]
-
-    colnames(importance)<-"Strength"
-
-    barplot(t(importance),las=2, border = 0,
-            cex.names =0.7,
-            main='Random Forest',
-           horiz=T,
-           col=coul)
-    
-}
-
-
-roc_plot<-function(probs,gt){
-    
-    library(pROC)
-    
-    
-    roc_score=roc(gt, probs) #AUC score
-    auc = (roc_score$auc) #  area under curve 
-    sensitivity <-roc_score$sensitivities
-    specificity <-roc_score$specificities
-    thresholds <-roc_score$thresholds
-    
-    plot(1-specificity,sensitivity,type='l', lwd=3, main ="ROC curve -- Logistic Regression ", col="red",xlab="False Positive Rate", ylab="True Positive Rate")
-    abline(c(0,0),c(1,1),col="black",lty=3,lwd=2)
-
-    auc_legend = paste("AUC = ", auc)
-   legend("bottom",c(auc_legend,'Random Classifier'), col=c("red",'black'),lty=c('solid','dashed') ,ity=1:2, lwd=2)
-
-
-    
-   return(auc) 
-}
-
-LogisticCoeff_plot<-function(model){
-    
-# Plotting sorted model coefficient in barplot 
-par(las=2) # make label text perpendicular to axis
-par(mar=c(10,2,2,2)) # increase y-axis margin.
-options(repr.plot.width = 10, repr.plot.height = 10)
-coeff<-model$coeff[-which(names(model$coeff)%in%c('(Intercept)'))]
-barplot(unname(sort(coeff)), main="Distribution of Logistic Regression Coefficient", names.arg=names(sort(coeff)), cex.names=.9, col=rgb(0.2,0.4,0.6,0.6) )
-
-}
-
-
-LogisticCurve_plot<-function(model, label){probability=
-    
-    label = ifelse(label==1,"satisfied(1)","neutral or dissatisfied(0)")
-    print("Logistic Plot")
-    df<-data.frame(probability = model$fitted.values,
-                   satisfy = label)
- 
-    df <- df[order(df$probability, decreasing=FALSE),]
-                                           
-    
-    df$rank <- 1:nrow(df)
-                                           
-    ggplot(data=df, aes(x=rank, y=probability)) +
-      geom_point(aes(color=satisfy), alpha=1, shape=4, stroke=2) +
-      xlab("Index of dataset") +
-      ylab("Predicted probability of passenger satisfaction")+
-      labs( title = "\n Logistic Regression Curve \n") +
-        theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(size=12),
-        axis.title.x = element_text(face="bold", colour="black", size = 14),
-        axis.title.y = element_text(face="bold", colour="black", size = 14),
-        title = element_text(face="bold", color="black", size= 15),
-        legend.title = element_text(face="bold", size = 12))
-    
-    
-}
-
-
-
-ConfusionMatrix_plot<-function(gt,pred_labels){
-    
-    cm<-table(gt,pred_labels)
-
-    c_matplot<-confusionMatrix(factor(gt,levels=1:0),factor(pred_labels,levels=1:0,),
-                          dnn= c('Prediction','Reference'))
-    plt <- data.frame(c_matplot$table)
-        plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
-
-    print(ggplot(plt, aes(Prediction,Reference, fill= Freq)) +
-            geom_tile() + geom_text(aes(label=Freq)) +
-            scale_fill_gradient(low="white", high="#009194") +
-            labs(x = "Reference",y = "Prediction",  title = "\n Confusiuon Matrix\n") +
-            scale_x_discrete(labels=c("neutral or dissatisfied(0)","satisfied(1)")) +
-            scale_y_discrete(labels=c("satisfied(1)","neutral or dissatisfied(0)"))+
-           theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(size=12),
-        axis.title.x = element_text(face="bold", colour="black", size = 14),
-        axis.title.y = element_text(face="bold", colour="black", size = 14),
-        title = element_text(face="bold", color="black", size= 15),
-        legend.title = element_text(face="bold", size = 12))
-      )
-    }
-
-F1_score<-function(precision,recall){
-    
-        score<-2*((precision*recall)/(precision+recall))
-    
-        return(score)
-    }
-
-BCE_loss<-function(y,y_hat){
-    
-
-    term1<- (y*log(y_hat+1e-7))
-    term2<- (1-y)*log(1-y_hat+1e-7)
-    
-    com<- -1* mean(term1+term2)
-    
-    return(com)
-}
-########################################### LOgistic
-
-
-
-LogisticCoeff_plot<-function(model){
-    
-# Plotting sorted model coefficient in barplot 
-par(las=2) # make label text perpendicular to axis
-par(mar=c(10,2,2,2)) # increase y-axis margin.
-options(repr.plot.width = 10, repr.plot.height = 10)
-coeff<-model$coeff[-which(names(model$coeff)%in%c('(Intercept)'))]
-barplot(unname(sort(coeff)), main="Distribution of Logistic Regression Coefficient", names.arg=names(sort(coeff)), cex.names=.9, col=rgb(0.2,0.4,0.6,0.6) )
-
-}
-
-
-LogisticCurve_plot<-function(model, label){probability=
-    
-    label = ifelse(label==1,"satisfied(1)","neutral or dissatisfied(0)")
-    print("Logistic Plot")
-    df<-data.frame(probability = model$fitted.values,
-                   satisfy = label)
- 
-    df <- df[order(df$probability, decreasing=FALSE),]
-                                           
-    
-    df$rank <- 1:nrow(df)
-                                           
-    ggplot(data=df, aes(x=rank, y=probability)) +
-      geom_point(aes(color=satisfy), alpha=1, shape=4, stroke=2) +
-      xlab("Index of dataset") +
-      ylab("Predicted probability of passenger satisfaction")+
-      labs( title = "\n Logistic Regression Curve \n") +
-        theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(size=12),
-        axis.title.x = element_text(face="bold", colour="black", size = 14),
-        axis.title.y = element_text(face="bold", colour="black", size = 14),
-        title = element_text(face="bold", color="black", size= 15),
-        legend.title = element_text(face="bold", size = 12))
-    
-    
-}
-
-
-
-ConfusionMatrix_plot<-function(gt,pred_labels){
-    
-    cm<-table(gt,pred_labels)
-
-    c_matplot<-confusionMatrix(factor(gt,levels=1:0),factor(pred_labels,levels=1:0,),
-                          dnn= c('Prediction','Reference'))
-    plt <- data.frame(c_matplot$table)
-        plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
-
-    print(ggplot(plt, aes(Prediction,Reference, fill= Freq)) +
-            geom_tile() + geom_text(aes(label=Freq)) +
-            scale_fill_gradient(low="white", high="#009194") +
-            labs(x = "Reference",y = "Prediction",  title = "\n Confusiuon Matrix\n") +
-            scale_x_discrete(labels=c("neutral or dissatisfied(0)","satisfied(1)")) +
-            scale_y_discrete(labels=c("satisfied(1)","neutral or dissatisfied(0)"))+
-           theme(plot.title = element_text(hjust = 0.5), 
-        axis.text = element_text(size=12),
-        axis.title.x = element_text(face="bold", colour="black", size = 14),
-        axis.title.y = element_text(face="bold", colour="black", size = 14),
-        title = element_text(face="bold", color="black", size= 15),
-        legend.title = element_text(face="bold", size = 12))
-      )
-    }
-
-F1_score<-function(precision,recall){
-    
-        score<-2*((precision*recall)/(precision+recall))
-    
-        return(score)
-    }
-
-BCE_loss<-function(y,y_hat){
-    
- 
-    term1<- (y*log(y_hat+1e-7))
-    term2<- (1-y)*log(1-y_hat+1e-7)
-    
-    com<- -1* mean(term1+term2)
-    
-    return(com)
-}
-
-
-##########################################  From Lab
-
-
-# ************************************************
-# allocateFoldID() :
-#
-# Append a column called "foldID" that indicates the fold number
-#
-# INPUT   :   data frame         - dataset        - dataset
-#
-# OUTPUT  :   data frame         - dataset        - dataset with foldID added
-#
-# ************************************************
-allocateFoldID<-function(dataset){
-  recordsPerFold<-ceiling(nrow(dataset)/KFOLDS)
-
-  foldIds<-rep(seq(1:KFOLDS),recordsPerFold)
-
-  foldIds<-foldIds[1:nrow(dataset)]
-
-  dataset$foldId<-foldIds
-
-  return(dataset)
-} #endof allocateFoldID()
-
-
-# ************************************************
-# stratifiedDataset() :
-#
-# Split dataset by the class (assume 2-class)
-# Calculate the number of records that will appear in each fold
-# Give each of these blocks a unique foldID
-# combine the datasets & randomise
-# The dataset now has a foldID from which we can select the data
-# for the experiments
-#
-# INPUT   :   data frame         - dataset        - dataset
-#
-# OUTPUT  :   data frame         - dataset        - dataset with foldID added
-#
-# ************************************************
-stratifiedDataset<-function(originalDataset){
-
-  positionClassOutput=which(names(originalDataset)==OUTPUT_FIELD)
-
-  # Get the unique class values
-  classes<-unique(originalDataset[,positionClassOutput])
-
-  # Split dataset into the two classes (so as to keep the class balance the same in the datasets)
-  indexClass1<-which(originalDataset[,positionClassOutput]==classes[1])
-  split1<-originalDataset[indexClass1,]
-  split2<-originalDataset[-indexClass1,]
-
-  # Append a column that indicates the fold number for each class
-  split1<-allocateFoldID(split1)
-  split2<-allocateFoldID(split2)
-
-  # Combine the two datasets
-
-  newDataset<-rbind(split1,split2)
-
-  #Randomise the classes
-  newDataset<-newDataset[order(runif(nrow(newDataset))),]
-
-  return(newDataset)
-}
-
-
-# ************************************************
-# stratifiedSplit() :
-#
-# Generate the TRAIN and TEST dataset based on the current fold
-#
-# INPUT   :   data frame         - dataset
-#
-# OUTPUT  :   list               - train & test datasets
-# ************************************************
-
-stratifiedSplit<-function(newDataset,fold){
-
-  test<-subset(newDataset, subset= foldId==fold, select=-foldId)
-  train<-subset(newDataset, subset= foldId!=fold,select=-foldId)
-
-  return(list(
-    train=train,
-    test=test))
-}
-
-
-
-# ************************************************
-# runExperiment() :
-#
-#
-# INPUT   :   data frame         - dataset        - dataset
-#             object function    - FUN            - name of function
-#             ...                - optional        - parameters are passed on
-#
-# OUTPUT  :   data frame         - dataset        - dataset with foldID added
-#
-# ************************************************
-runExperiment<-function(dataset,FUN, ...){
-
-  allResults<-data.frame()
-
-  for (k in 1:KFOLDS){
-
-    
-
-    splitData<-stratifiedSplit(newDataset=dataset,fold=k)
-    print(paste("FOLD : ,",k))
-    out<-FUN(training_data=splitData$train,
-                  testing_data=splitData$test,
-             plot=FALSE,
-                  ...)
-    measures<-out$result
-    measures <-measures[-which(names(measures) %in%c("pred_labels","gt","proba"))]
-
-
-    
-
-    allResults<-rbind(allResults,data.frame(measures))
-  } #endof for()
-
-  # Return the means from all the experiments back as a list
-  # 260221NRT round metrics to 2 decimal places
-  getMeans<-round(colMeans(allResults),digits=2)
-
-  getMeans[1:4]<-as.integer(getMeans[1:4])  # TP, FN, TN, FP are rounded to ints
-
-
-  #290520NRT return the above with the rounded values
-  return(list("means" = as.list(getMeans), "allresults"= allResults))
-} #endof runExperiment()
-
-
-# ************************************************
-# NConvertClass() :
-#
-# In original dataset, $Status is the classification label
-# We need to convert this to give the minority class a value of 0
-# this just makes it easiert to define the confusioon matrix!
-# for the UCI-G this is a class of {0,1} being {bad, good}
-#
-# INPUT   :
-#             Data Frame        - dataset
-#
-# OUTPUT  :
-#             Data Frame        - dataset
-#
-# ************************************************
-NConvertClass<-function(dataset,OUTPUT_FIELD){
-  positionClassOutput<-which(names(dataset)==OUTPUT_FIELD)
-  classes<-sort(table(dataset[,positionClassOutput])) #smallest class will be first
-  minority<-names(classes[1])
-  indexToStatus2<-which(dataset[positionClassOutput]==minority)
-  dataset[positionClassOutput][indexToStatus2,]<-0
-  dataset[positionClassOutput][-indexToStatus2,]<-1
-  return(dataset)
-}
